@@ -1,5 +1,5 @@
 #! /usr/bin/env python3
-import rospy
+import rospy          
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import Twist
 from std_msgs.msg import String
@@ -52,6 +52,7 @@ class Imitate:
             cv2.fillPoly(mask_blue, filtered_cnts, (255,255,255))
             clue_mask = cv2.bitwise_and(mask_blue,mask_blue,mask=mask_white)
             cnts, _ = cv2.findContours(clue_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            cv2.fillPoly(clue_mask, cnts, (255,255,255))
             dst = cv2.cornerHarris(clue_mask,2,3,0.04)
             ret, dst = cv2.threshold(dst,0.1*dst.max(),255,0)
             dst = np.uint8(dst)
@@ -70,9 +71,10 @@ class Imitate:
                 return (angle + 2 * np.pi) % (2 * np.pi)
             # Sort the source points based on their relative positions to match the destination points format
             sorted_src = sorted(src, key=sort_key)
+            sorted_src = np.array(sorted_src)
 
             # Reorder 'src' points to match the 'dest' format
-            src = np.array([sorted_src[2], sorted_src[3], sorted_src[1], sorted_src[0]], dtype=np.float32)
+            src = np.array([sorted_src[1], sorted_src[2], sorted_src[0], sorted_src[3]], dtype=np.float32)
             print(src)
 
             width = 600

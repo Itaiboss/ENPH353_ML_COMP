@@ -46,7 +46,7 @@ class ROSHandler(QObject):
 
         if self.is_saving:
             if self.cur_state is not None:
-                filename = self.cur_state + f'_#{self.counter}'+'.jpg'
+                filename = f'#{self.counter}_'+self.cur_state+'.jpg'
                 # Write the image using the specified filename
                 cv2.imwrite(filename, out)
                 self.counter += 1
@@ -67,7 +67,7 @@ class My_App(QtWidgets.QMainWindow):
     def __init__(self):
         super(My_App, self).__init__()
         loadUi("./imitate.ui", self)
-
+        self.ros_handler = ROSHandler()  # Instantiate ROSHandler
         self._is_saving = False
         self.toggle_saving.clicked.connect(self.SLOT_toggle_saving)
         br = CvBridge()
@@ -75,18 +75,20 @@ class My_App(QtWidgets.QMainWindow):
     def SLOT_toggle_saving(self):
         if self._is_saving:
             self.toggle_saving.setText("&Start imitation")
-            # ros_handler.counter = 0
-            # ros_handler.path = 0 
+            self.ros_handler.is_saving = False
+            self._is_saving = False
+            self.ros_handler.counter = 0
+            self.ros_handler.path = ''
         else:
             self._is_saving = True
             self.toggle_saving.setText("&Stop imitation")
-            ros_handler = ROSHandler()  # Instantiate ROSHandler
-            ros_handler.is_saving = True
+            
+            self.ros_handler.is_saving = True
             path = os.path.join(parent_dir, self.folder_name.text())
-            ros_handler.path = path
+            self.ros_handler.path = path
             os.mkdir(path, mode = 0o777)
             os.chdir(path)
-            ros_handler.image_signal.connect(self.update_image)
+            self.ros_handler.image_signal.connect(self.update_image)
             
 
     def convert_cv_to_pixmap(self, cv_img):
@@ -107,4 +109,3 @@ app = QtWidgets.QApplication(sys.argv)
 myApp = My_App()
 myApp.show()
 sys.exit(app.exec_())
-
