@@ -39,29 +39,40 @@ class Imitate:
             print(e)
         img_gray = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
         bi = cv2.bilateralFilter(cv_image, 5, 75, 75)
-        lower = np.array([90, 0, 0], dtype="uint8")
-        upper = np.array([120, 10, 10], dtype="uint8")
-        mask_blue = cv2.inRange(bi, lower, upper)
+        hsv = cv2.cvtColor(cv_image, cv2.COLOR_BGR2HSV)
+
+        uh = 130
+        us = 255
+        uv = 255
+        lh = 110
+        ls = 50
+        lv = 50
+        lower_hsv = np.array([lh,ls,lv])
+        upper_hsv = np.array([uh,us,uv])
+        lower_white = np.array([0,0,90])
+        upper_white = np.array([10,10,110])
+
+        # Threshold the HSV image to get only blue colors
+        mask_blue = cv2.inRange(hsv, lower_hsv, upper_hsv)
         mask_white = cv2.bitwise_not(mask_blue)
         # threshold = 180
         # _, binary = cv2.threshold(img_gray,threshold,255,cv2.THRESH_BINARY)
         cnts, _ = cv2.findContours(mask_blue, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        cv2.fillPoly(mask_blue, cnts, (255,255,255))
+        # filtered_cnts = [contour for contour in cnts if cv2.contourArea(contour) > 1000]
+        mask_clue = cv2.bitwise_and(mask_blue,mask_white)
         filtered_cnts = [contour for contour in cnts if cv2.contourArea(contour) > 1000]
         if filtered_cnts:
-            mask_blue[:] = 0
-            cv2.fillPoly(mask_blue, filtered_cnts, (255,255,255))
-            clue_mask = cv2.bitwise_and(mask_blue,mask_blue,mask=mask_white)
-            cnts, _ = cv2.findContours(clue_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            cv2.fillPoly(clue_mask, cnts, (255,255,255))
-            dst = cv2.cornerHarris(clue_mask,2,3,0.04)
+            dst = cv2.cornerHarris(mask_clue,2,3,0.04)
             ret, dst = cv2.threshold(dst,0.1*dst.max(),255,0)
             dst = np.uint8(dst)
             ret, labels, stats, centroids = cv2.connectedComponentsWithStats(dst)
             criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.001)
-            corners = cv2.cornerSubPix(clue_mask,np.float32(centroids),(5,5),(-1,-1),criteria)
-            print(corners)
+            corners = cv2.cornerSubPix(mask_clue,np.float32(centroids),(5,5),(-1,-1),criteria)
+            
             #Now draw them
             src =corners[1:]
+            #print(src)
             
 
             # Rearrange the corners based on the assigned indicesght
@@ -74,7 +85,7 @@ class Imitate:
             sorted_src = np.array(sorted_src)
 
             # Reorder 'src' points to match the 'dest' format
-            src = np.array([sorted_src[1], sorted_src[2], sorted_src[0], sorted_src[3]], dtype=np.float32)
+            src = np.array([sorted_src[2], sorted_src[3], sorted_src[1], sorted_src[0]], dtype=np.float32)
             print(src)
 
             width = 600
@@ -115,11 +126,12 @@ class Imitate:
                 x, y = int(corner[0]), int(corner[1])
                 cv2.circle(cv_image,(x,y), 2, (0,255,0), -1)  # -1 signifies filled circle
         
-        cv2.imshow("clue", clue)
-        cv2.imshow("gray", sharpen)
-        cv2.imshow("thresh", mask2)
+        
+        cv2.imshow("blue", mask_blue)
+        cv2.imshow("white", mask_white)
+        cv2.imshow("image", mask_clue)
         cv2.imshow("done", result)
-        cv2.imshow("image", cv_image)
+
         cv2.waitKey(1) 
         # save sate and image
 
