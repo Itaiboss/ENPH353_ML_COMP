@@ -11,12 +11,21 @@ import numpy as np
 
 import tensorflow as tf
 
+import timeit
+from collections import Counter
+
 
 interpreter = tf.lite.Interpreter(model_path='quantized_model3.tflite')
 interpreter.allocate_tensors()
 
 input_details = interpreter.get_input_details()[0]
 output_details = interpreter.get_output_details()[0]
+
+
+#seen_clue = False
+
+
+possible_keys = ["SIZE", "VICTIM", "CRIME", "TIME", "PLACE", "MOTIVE", "WEAPON", "BANDIT"]
 
 def check_if_space(letter):
     # Count non-white pixels
@@ -26,7 +35,7 @@ def check_if_space(letter):
     total_pixels = np.prod(letter.shape)
     non_white_percentage = (non_white_pixels / total_pixels)
 
-    if non_white_percentage < 0.1:
+    if non_white_percentage < 0.13:
         return True
     else:
         return False
@@ -159,6 +168,11 @@ class Imitate:
         self.cur_state = None
         self.prev_state = None
 
+        self.seen_clue = False
+        self.prev_clue_time = 0
+        self.prev_clue_frames = []
+        self.good_values = []
+
     def update_state(self, new_state):
         self.prev_state = self.cur_state
         self.cur_state = new_state
@@ -268,7 +282,7 @@ class Imitate:
             # kernel2 =  np.ones((3,3),np.uint8)
             # dilate = cv2.dilate(noise,kernel2,iterations = 1)
 
-            retr, mask2 = cv2.threshold(gray_clue, 100, 255, cv2.THRESH_BINARY_INV)
+            retr, mask2 = cv2.threshold(gray_clue, 100, 255, cv2.THRESH_BINARY_INV) #WAS 100
             # #45 equihist
 
             
@@ -279,16 +293,52 @@ class Imitate:
             cv2.imshow("clue board", result)
             cv2.waitKey(1)
 
-            clue_detect(result)
+
+            #clue_detect(result)
+            
+            self.prev_clue_time = rospy.get_time()
+            self.prev_clue_frames.append(result)
+            self.seen_clue = True
+            print(f"Seen clue @ {self.prev_clue_time}")
+        else:
+            # If havent seen a clue for 2 seconds, submit clue based on 10 prev clueboards
+            cur_time = rospy.get_time()
+            if self.seen_clue is True:
+                if cur_time - self.prev_clue_time > 2:
+                    submit_key = ''
+                    submit_value = ''
+
+                    good_values = []
+                    self.seen_clue = False
+                    scan_clues = self.prev_clue_frames[-10:]
+                    for clue in scan_clues:
+                        key, value = clue_detect(clue)
+                        if key in possible_keys:
+                            good_values.append(value)
+                            submit_key = key
+                    
+                    if good_values:
+                        # Use Counter to count occurrences of each element in the list
+                        counts = Counter(good_values)
+
+                        # Find the most common element and its count
+                        submit_value, count = counts.most_common(1)[0]
+
+                        print(f"Submitting {submit_key} = {submit_value}")
+                    else:
+                        print("No good values found") 
+
+                    
 
             
             # for corner in src:
             #     x, y = int(corner[0]), int(corner[1])
             #     cv2.circle(cv_image,(x,y), 2, (0,255,0), -1)  # -1 signifies filled circle
         
-        cv2.imshow("gray", mask_road)
+        cv2.imshow("camera", cv_image)
+        #cv2.imshow("gray", mask_road)
         #cv2.imshow("cut", im_cut)
-        cv2.imshow("hsv", hsv_cut)
+        #cv2.imshow("hsv", hsv_cut)
         # cv2.imshow("blue", mask_blue)
         # cv2.imshow("out", result)
         # cv2.imshow("white", mask_white)
