@@ -15,7 +15,7 @@ import timeit
 from collections import Counter
 
 
-interpreter = tf.lite.Interpreter(model_path='quantized_model3.tflite')
+interpreter = tf.lite.Interpreter(model_path='quantized_model5.tflite')
 interpreter.allocate_tensors()
 
 input_details = interpreter.get_input_details()[0]
@@ -25,7 +25,7 @@ output_details = interpreter.get_output_details()[0]
 #seen_clue = False
 
 
-possible_keys = ["SIZE", "VICTIM", "CRIME", "TIME", "PLACE", "MOTIVE", "WEAPON", "BANDIT"]
+possible_keys = {"SIZE  " : 1, "VICTIM" : 2, "CRIME " : 3, "TIME  " : 4, "PLACE " : 5, "MOTIVE" : 6, "WEAPON" : 7, "BANDIT" : 8}
 
 def check_if_space(letter):
     # Count non-white pixels
@@ -161,7 +161,15 @@ rospy.init_node('imitation_node')
 move_pub = rospy.Publisher('/R1/cmd_vel', Twist, 
   queue_size=10)    
 br = CvBridge()
+score_pub = rospy.Publisher('/score_tracker', String, 
+  queue_size=10)
 rospy.sleep(1)
+id = "winux"
+password = "password"
+
+def pub_clue(id,password,location,prediciton):
+    formatted_string = f"{id},{password},{location},{prediciton}"
+    score_pub.publish(formatted_string)
 
 class Imitate:
     def __init__(self):
@@ -172,6 +180,8 @@ class Imitate:
         self.prev_clue_time = 0
         self.prev_clue_frames = []
         self.good_values = []
+
+        pub_clue(id,password,0,"NA")
 
     def update_state(self, new_state):
         self.prev_state = self.cur_state
@@ -228,6 +238,32 @@ class Imitate:
                 epsilon = 0.08 * cv2.arcLength(c, True)
                 approx = cv2.approxPolyDP(c, epsilon, True)
 
+                # Added for CHATGPT
+                #if len(approx) == 4:
+                # Sort the points in clockwise order
+                #    approx = np.array(sorted(approx, key=lambda x: x[0][0] + x[0][1]))
+
+
+            # CHATGPT VERSION ------
+            # Extract the four corners
+            #top_left, top_right, bottom_right, bottom_left = approx
+
+            # Define source points for perspective transformation
+            #src = np.array([top_left[0], top_right[0], bottom_right[0], bottom_left[0]], dtype=np.float32)
+
+            # Perform perspective transformation as before
+            #width, height = 600, 400
+            #dest = np.float32([[0, 0], [width, 0], [width, height], [0, height]])
+
+            #M = cv2.getPerspectiveTransform(src, dest)
+            #clue = cv2.warpPerspective(cv_image, M, (width, height), flags=cv2.INTER_LINEAR)
+            #cv2.imshow("'clue'", clue)
+
+            #------
+
+            # Perform perspective transformation as before
+            #width, height = 600, 400
+            #dest = np.float32([[0, 0], [width, 0], [width, height], [0, height]])
                 #cv2.drawContours(cv_image, [approx], -1, (0, 255, 0), 2)
             # print(approx)
         #     dst = cv2.cornerHarris(mask_clue,2,3,0.04)
@@ -253,9 +289,13 @@ class Imitate:
 
         #     # Reorder 'src' points to match the 'dest' format
             # approx
+            
+            
             src = np.array([approx[0], approx[3], approx[1], approx[2]], dtype=np.float32)
         #     print(src)
 
+
+            # ITAI VERSION ------
             width = 600
             height= 400
             dest = np.float32([[0, 0],
@@ -265,6 +305,11 @@ class Imitate:
 
             M = cv2.getPerspectiveTransform(src,dest)
             clue = cv2.warpPerspective(cv_image,M,(width, height),flags=cv2.INTER_LINEAR)
+            cv2.imshow("'clue'", clue)
+
+            #------
+
+            # image inhancement
 
             gray_clue = cv2.cvtColor(clue, cv2.COLOR_BGR2GRAY)
             clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
@@ -299,7 +344,7 @@ class Imitate:
             self.prev_clue_time = rospy.get_time()
             self.prev_clue_frames.append(result)
             self.seen_clue = True
-            print(f"Seen clue @ {self.prev_clue_time}")
+            #print(f"Seen clue @ {self.prev_clue_time}")
         else:
             # If havent seen a clue for 2 seconds, submit clue based on 10 prev clueboards
             cur_time = rospy.get_time()
@@ -308,23 +353,24 @@ class Imitate:
                     submit_key = ''
                     submit_value = ''
 
-                    good_values = []
+                    self.good_values = []
                     self.seen_clue = False
                     scan_clues = self.prev_clue_frames[-10:]
                     for clue in scan_clues:
                         key, value = clue_detect(clue)
                         if key in possible_keys:
-                            good_values.append(value)
+                            self.good_values.append(value)
                             submit_key = key
                     
-                    if good_values:
+                    if self.good_values:
                         # Use Counter to count occurrences of each element in the list
-                        counts = Counter(good_values)
+                        counts = Counter(self.good_values)
 
                         # Find the most common element and its count
                         submit_value, count = counts.most_common(1)[0]
 
                         print(f"Submitting {submit_key} = {submit_value}")
+                        pub_clue(id,password,possible_keys[submit_key],submit_value)
                     else:
                         print("No good values found") 
 
