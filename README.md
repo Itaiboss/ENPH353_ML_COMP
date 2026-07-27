@@ -12,7 +12,9 @@
 |![image](https://github.com/Itaiboss/ENPH353_ML_COMP/assets/90986809/81d7732c-f96a-4bba-856d-a483efe7b932)| <img width="740" alt="Screenshot 2024-01-10 at 6 59 36 PM" src="https://github.com/Itaiboss/ENPH353_controller/assets/90986809/8406af75-e4c8-4dde-8e89-fd3da348be84">||
 
 
-for an in depth analysis of our approach and implementation read our paper [Fizz Detective Report - Winux.pdf](https://github.com/Itaiboss/ENPH353_controller/files/13897461/Fizz.Detective.Report.-.Winux.pdf). 
+for an in depth analysis of our approach and implementation read our paper 
+[![View the PDF Document](pdfcover.png)](Fizz.Detective.Report-.Winux.pdf)
+[](https://github.com/Itaiboss/ENPH353_controller/files/13897461/Fizz.Detective.Report.-.Winux.pdf). 
 
 
 ### Our Solution 
